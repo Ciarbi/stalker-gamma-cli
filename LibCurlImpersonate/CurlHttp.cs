@@ -31,7 +31,8 @@ public class CurlHttp : IDisposable
         Action<double>? onSpeed = null,
         bool http3 = false,
         Action<string>? onHttpVersion = null,
-        CancellationToken ct = default
+        CancellationToken ct = default,
+        string? cookieHeader = null
     )
     {
         IntPtr handle = LibCurl.curl_easy_init();
@@ -47,6 +48,8 @@ public class CurlHttp : IDisposable
             LibCurl.curl_easy_impersonate(handle, Impersonation, 1);
             LibCurl.curl_easy_setopt_str(handle, LibCurl.CURLOPT_ACCEPT_ENCODING, "");
             LibCurl.curl_easy_setopt_str(handle, LibCurl.CURLOPT_URL, url);
+            if (!string.IsNullOrWhiteSpace(cookieHeader))
+                LibCurl.curl_easy_setopt_str(handle, LibCurl.CURLOPT_COOKIE, cookieHeader);
             LibCurl.curl_easy_setopt_cb(handle, LibCurl.CURLOPT_WRITEFUNCTION, OnWrite);
             LibCurl.curl_easy_setopt_ptr(
                 handle,
@@ -86,7 +89,8 @@ public class CurlHttp : IDisposable
         string url,
         bool http3 = false,
         Action<string>? onHttpVersion = null,
-        CancellationToken ct = default
+        CancellationToken ct = default,
+        string? cookieHeader = null
     )
     {
         IntPtr handle = LibCurl.curl_easy_init();
@@ -101,6 +105,8 @@ public class CurlHttp : IDisposable
         {
             LibCurl.curl_easy_impersonate(handle, Impersonation, 1);
             LibCurl.curl_easy_setopt_str(handle, LibCurl.CURLOPT_URL, url);
+            if (!string.IsNullOrWhiteSpace(cookieHeader))
+                LibCurl.curl_easy_setopt_str(handle, LibCurl.CURLOPT_COOKIE, cookieHeader);
             LibCurl.curl_easy_setopt_cb(handle, LibCurl.CURLOPT_HEADERFUNCTION, OnHeader);
             LibCurl.curl_easy_setopt_ptr(
                 handle,
@@ -226,6 +232,75 @@ public class CurlHttp : IDisposable
             headers[line[..colon].Trim()] = line[(colon + 1)..].Trim();
         }
         return total;
+    }
+
+    public static void DownloadToFile(
+        string url,
+        string destinationPath,
+        Action<double>? onProgress = null,
+        bool http3 = false,
+        Action<string>? onHttpVersion = null,
+        CancellationToken ct = default,
+        string? cookieHeader = null
+    )
+    {
+        var dir = Path.GetDirectoryName(destinationPath);
+        if (!string.IsNullOrWhiteSpace(dir))
+            Directory.CreateDirectory(dir);
+
+        IntPtr handle = LibCurl.curl_easy_init();
+        if (handle == IntPtr.Zero)
+            throw new InvalidOperationException("curl_easy_init failed");
+
+        using var fs = new FileStream(
+            destinationPath,
+            FileMode.Create,
+            FileAccess.Write,
+            FileShare.None,
+            bufferSize: 1024 * 1024
+        );
+        var filePin = GCHandle.Alloc(fs);
+        var xferPin = InstallXferCallback(handle, ct, onProgress: onProgress);
+        var errBuf = AllocErrorBuffer();
+        try
+        {
+            LibCurl.curl_easy_impersonate(handle, Impersonation, 1);
+            LibCurl.curl_easy_setopt_str(handle, LibCurl.CURLOPT_ACCEPT_ENCODING, "");
+            LibCurl.curl_easy_setopt_str(handle, LibCurl.CURLOPT_URL, url);
+            if (!string.IsNullOrWhiteSpace(cookieHeader))
+                LibCurl.curl_easy_setopt_str(handle, LibCurl.CURLOPT_COOKIE, cookieHeader);
+            LibCurl.curl_easy_setopt_cb(handle, LibCurl.CURLOPT_WRITEFUNCTION, OnWriteFile);
+            LibCurl.curl_easy_setopt_ptr(
+                handle,
+                LibCurl.CURLOPT_WRITEDATA,
+                GCHandle.ToIntPtr(filePin)
+            );
+            LibCurl.curl_easy_setopt_long(handle, LibCurl.CURLOPT_FOLLOWLOCATION, 1L);
+            LibCurl.curl_easy_setopt_str(handle, LibCurl.CURLOPT_CAINFO, PathToCacert);
+            LibCurl.curl_easy_setopt_ptr(handle, LibCurl.CURLOPT_ERRORBUFFER, errBuf);
+            if (http3)
+                LibCurl.curl_easy_setopt_long(
+                    handle,
+                    LibCurl.CURLOPT_HTTP_VERSION,
+                    LibCurl.CURL_HTTP_VERSION_3
+                );
+
+            int code = LibCurl.curl_easy_perform(handle);
+            if (code == LibCurl.CURLE_ABORTED_BY_CALLBACK)
+                ct.ThrowIfCancellationRequested();
+            if (code != LibCurl.CURLE_OK)
+                throw CurlException.Create(code, url, Marshal.PtrToStringUTF8(errBuf));
+
+            ReportHttpVersion(handle, onHttpVersion);
+        }
+        finally
+        {
+            filePin.Free();
+            if (xferPin.IsAllocated)
+                xferPin.Free();
+            LibCurl.curl_easy_cleanup(handle);
+            Marshal.FreeHGlobal(errBuf);
+        }
     }
 
     public void Dispose()

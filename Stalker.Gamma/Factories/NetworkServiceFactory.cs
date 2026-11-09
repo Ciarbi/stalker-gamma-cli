@@ -7,13 +7,15 @@ namespace Stalker.Gamma.Factories;
 public class NetworkServiceFactory(
     IHttpClientFactory hcf,
     StalkerGammaServerProxy stalkerGammaServerProxy,
-    StalkerGammaSettings settings
+    StalkerGammaSettings settings,
+    IModDbSessionService modDbSessionService
 )
 {
     public NetworkService Create() =>
         new(
             hcf,
             stalkerGammaServerProxy,
+            modDbSessionService,
             useCurl: settings.StalkerGammaServerUrl is null
                 || settings.StalkerGammaServerUrl.Length == 0
         );

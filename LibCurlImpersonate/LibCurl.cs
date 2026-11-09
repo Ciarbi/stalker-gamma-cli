@@ -243,6 +243,7 @@ internal static partial class LibCurl
     internal const int CURLOPT_HEADERDATA = 10029;
     internal const int CURLOPT_NOBODY = 44;
     internal const int CURLOPT_NOPROGRESS = 43;
+    internal const int CURLOPT_COOKIE = 10022;
     internal const int CURLOPT_XFERINFOFUNCTION = 20219;
     internal const int CURLOPT_XFERINFODATA = 10057;
     internal const int CURLOPT_HTTP_VERSION = 84;

@@ -8,6 +8,7 @@ namespace Stalker.Gamma.Services;
 public class NetworkService(
     IHttpClientFactory hcf,
     StalkerGammaServerProxy stalkerGammaServerProxy,
+    IModDbSessionService modDbSessionService,
     bool useCurl
 )
 {
@@ -17,7 +18,13 @@ public class NetworkService(
     ) =>
         useCurl
             ? await Task.Run(
-                () => CurlHttp.GetHeaders(url, http3: true, ct: cancellationToken),
+                () =>
+                    CurlHttp.GetHeaders(
+                        url,
+                        http3: true,
+                        ct: cancellationToken,
+                        cookieHeader: modDbSessionService.GetCookieHeader(url)
+                    ),
                 cancellationToken
             )
             : (await stalkerGammaServerProxy.GetHeadersAsync(url, cancellationToken)).ToDictionary(
@@ -33,10 +40,34 @@ public class NetworkService(
         CancellationToken cancellationToken = default
     )
     {
+        var destinationPath = Path.Join(pathToDownloads, fileName);
+        if (useCurl && modDbSessionService.IsModDbUrl(url))
+        {
+            await Task.Run(
+                () =>
+                    CurlHttp.DownloadToFile(
+                        url,
+                        destinationPath,
+                        onProgress: p =>
+                        {
+                            if (p is >= 0 and <= 1)
+                                onProgress?.Invoke(new DownloadProgress((long)(p * 1_000_000), 1_000_000));
+                        },
+                        http3: true,
+                        ct: cancellationToken,
+                        cookieHeader: modDbSessionService.GetCookieHeader(url)
+                    ),
+                cancellationToken
+            );
+            var size = File.Exists(destinationPath) ? new FileInfo(destinationPath).Length : 0;
+            onProgress?.Invoke(new DownloadProgress(size, size));
+            return;
+        }
+
         await DownloadFileFast.DownloadAsync(
             _dlAddonHc,
             url,
-            Path.Join(pathToDownloads, fileName),
+            destinationPath,
             onProgress,
             cancellationToken
         );
@@ -49,7 +80,13 @@ public class NetworkService(
         CloudflareChallenge.ThrowIfChallenged(
             useCurl
                 ? await Task.Run(
-                    () => CurlHttp.Fetch(url, http3: true, ct: cancellationToken),
+                    () =>
+                        CurlHttp.Fetch(
+                            url,
+                            http3: true,
+                            ct: cancellationToken,
+                            cookieHeader: modDbSessionService.GetCookieHeader(url)
+                        ),
                     cancellationToken
                 )
                 : await stalkerGammaServerProxy.GetStringAsync(url, cancellationToken),

@@ -49,6 +49,7 @@ public static class ServiceCollectionExtensions
             .AddScoped<PreserveUserLtxSettingsService>()
             .AddScoped<GetCanonicalLinkFromModDbStartLink>()
             .AddScoped<ModDbGetAddonMetadataService>()
+            .AddSingleton<IModDbSessionService, ModDbSessionService>()
             .AddScoped<IGetStalkerModsFromLocal, GetStalkerModsFromLocal>()
             .AddScoped<ISeparatorsFactory, SeparatorsFactory>()
             .AddScoped<IGetStalkerModsFromApi, GetStalkerModsFromApi>()

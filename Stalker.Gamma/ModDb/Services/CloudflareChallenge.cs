@@ -7,7 +7,7 @@ public static class CloudflareChallenge
             ? throw new CloudflareChallengeException(
                 $"""
                 Cloudflare challenge detected when retrieving: {url}
-                Use a VPN to another country or visit https://github.com/FaithBeam/stalker-gamma-cli/wiki/Stalker-GAMMA-Server
+                Run `stalker-gamma get-sc` to capture ModDB session cookies with a real browser (Firefox), or use a VPN/--stalker-gamma-server-url. Existing gamma-launcher cookies at ~/.config/gamma-launcher/moddb_cookies.json are also read automatically.
                 """
             )
             : html;
