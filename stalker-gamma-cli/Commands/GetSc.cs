@@ -8,7 +8,7 @@ namespace stalker_gamma_cli.Commands;
 public class GetSc(ILogger logger, IModDbSessionService modDbSessionService)
 {
     /// <summary>
-    /// Capture ModDB session cookies using Firefox (helps bypass Cloudflare 403/download issues). Also reads existing gamma-launcher cookies automatically.
+    /// Capture ModDB session cookies using Firefox (helps bypass Cloudflare 403/download issues).
     /// </summary>
     /// <param name="firefox">Path to Firefox binary or directory containing it (default: auto-detect)</param>
     /// <param name="url">URL to open (default: https://www.moddb.com/)</param>

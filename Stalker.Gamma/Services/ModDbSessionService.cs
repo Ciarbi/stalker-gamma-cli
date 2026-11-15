@@ -42,7 +42,7 @@ internal partial class ModDbCookieFileJsonContext : JsonSerializerContext;
 public class ModDbSessionService(ILogger logger) : IModDbSessionService
 {
     private const string GetScHint =
-        "Run `stalker-gamma get-sc` to capture ModDB session cookies with a real browser (Firefox). If you already used gamma-launcher, its `~/.config/gamma-launcher/moddb_cookies.json` is also read automatically.";
+        "Run `stalker-gamma get-sc` to capture ModDB session cookies with a real browser (Firefox).";
 
     private readonly object _lock = new();
     private string? _cachedHeader;
@@ -53,33 +53,10 @@ public class ModDbSessionService(ILogger logger) : IModDbSessionService
 
     public string CookiesPath => Path.Join(AppDataDir, "moddb_cookies.json");
 
-    public IReadOnlyList<string> CandidateCookiePaths
-    {
-        get
-        {
-            var list = new List<string> { CookiesPath };
-            var gammaLauncher = GammaLauncherCookiesPath();
-            if (!string.IsNullOrWhiteSpace(gammaLauncher) && !list.Contains(gammaLauncher, StringComparer.OrdinalIgnoreCase))
-                list.Add(gammaLauncher);
-            return list;
-        }
-    }
+    public IReadOnlyList<string> CandidateCookiePaths => [CookiesPath];
 
     private static string AppDataDir =>
         Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "stalker-gamma");
-
-    private static string? GammaLauncherCookiesPath()
-    {
-        // Linux/macOS: ~/.config/gamma-launcher/moddb_cookies.json (platformdirs user_config_path)
-        var xdg = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
-        var configBase = !string.IsNullOrWhiteSpace(xdg)
-            ? xdg
-            : RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-                ? Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
-                : Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config");
-        var p = Path.Join(configBase, "gamma-launcher", "moddb_cookies.json");
-        return p;
-    }
 
     public string? GetCookieHeader(string? url)
     {
@@ -287,7 +264,7 @@ public class ModDbSessionService(ILogger logger) : IModDbSessionService
         }
 
         Directory.CreateDirectory(AppDataDir);
-        var data = new ModDbCookieFile { Cookies = cookies, Source = "firefox", Profile = profile };
+        var data = new ModDbCookieFile(cookies, "firefox", profile);
         var json = JsonSerializer.Serialize(data, ModDbCookieFileJsonContext.Default.ModDbCookieFile);
         File.WriteAllText(CookiesPath, json, new UTF8Encoding(false));
         TryRestrictPermissions(CookiesPath);

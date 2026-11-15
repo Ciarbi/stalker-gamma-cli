@@ -10,9 +10,17 @@ public partial class GitService
         try
         {
             using var repo = new Repository(pathToRepo);
+            if (repo.Head?.Tip is null)
+            {
+                throw new GitUtilityException(
+                    $"""
+                    No commits found in repository
+                    Path to repo: {pathToRepo}
+                    """, new InvalidOperationException("Repository has no commits"));
+            }
             return repo.Head.Tip.Sha;
         }
-        catch (Exception e)
+        catch (Exception e) when (e is not GitUtilityException)
         {
             throw new GitUtilityException(
                 $"""

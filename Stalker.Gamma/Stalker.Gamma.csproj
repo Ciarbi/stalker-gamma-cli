@@ -14,6 +14,7 @@
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.11.0" />
     <PackageReference Include="Microsoft.Extensions.Resilience" Version="10.11.0" />
     <PackageReference Include="Microsoft.Kiota.Bundle" Version="2.1.6" />
+    <PackageReference Include="Serilog" Version="4.2.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\LibCurlImpersonate\LibCurlImpersonate.csproj" />
